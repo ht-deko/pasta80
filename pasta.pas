@@ -7,7 +7,9 @@ program Pasta;
 {$mode delphi}
 
 uses
-  {$ifdef darwin} BaseUnix, {$endif} Keyboard, Dos, Math, Process;
+  {$ifdef darwin} BaseUnix, {$endif} 
+  {$ifdef windows} Windows, SysUtils, Classes, {$endif} 
+  Keyboard, Dos, Math, Process;
 
 const
   Version = '0.98';
@@ -527,7 +529,7 @@ type
   (**
    * The three platforms we currently support.
    *)
-  TBinaryType = (btCPM, btZX, btZX128, btZXN, btAgon);
+  TBinaryType = (btCPM, btZX, btZX128, btZXN, btAgon, btG850);
 
   (**
    * The possible output formats.
@@ -556,12 +558,12 @@ var
   KeepInt: Boolean = False;
 
 var
-  HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd: String;
+  HomeDir, SjAsmCmd, NanoCmd, CodeCmd, TnylpoCmd, FuseCmd, G800Cmd: String;
   MonkeyCmd, CSpectCmd, ImagePath, FabAgonDir: String;
   AltEditor: Boolean;
 
 var
-  SrcFile, AsmFile, BinFile: String;
+  SrcFile, AsmFile, BinFile, HexFile: String;
 
 (**
  * Tries to setup the compiler's home directory and the paths to various tools,
@@ -581,6 +583,7 @@ begin
   CodeCmd   := 'code';
   TnylpoCmd := 'tnylpo';
   FuseCmd   := {$ifdef darwin} 'Fuse.app' {$else} 'fuse' {$endif};
+  G800Cmd   := 'g800';
   MonkeyCmd := 'hdfmonkey';
   CSpectCmd := {$ifndef windows} 'CSpect.exe' {$else} 'CSpect' {$endif};
   ImagePath := 'tbblue.img';
@@ -616,6 +619,8 @@ begin
             TnylpoCmd := Value
           else if Key = 'fuse' then
             FuseCmd := Value
+          else if Key = 'g800' then
+            G800Cmd := Value
           else if Key = 'hdfmonkey' then
             MonkeyCmd := Value
           else if Key = 'cspect' then
@@ -718,6 +723,8 @@ begin
   Writeln('Tnylpo   : ', S);
   WriteCheck(CheckPath(FuseCmd, S));
   Writeln('Fuse     : ', S);
+  WriteCheck(CheckPath(G800Cmd, S));
+  Writeln('G800     : ', S);
   WriteCheck(CheckPath(CSpectCmd, S));
   Writeln('CSpect   : ', S);
   WriteCheck(CheckPath(FabAgonDir + '/fab-agon-emulator', S));
@@ -1201,8 +1208,8 @@ begin
 
       (*
       Wenn lookup in main block stattfindet, nimm Symbol als Wurzel in irgendeine
-      Liste auf. Noch nicht aktivieren. Beim Schließen des main blocks rekursive
-      Durchläufe bei allen Wurzeln starten.
+      Liste auf. Noch nicht aktivieren. Beim Schlieﾃ歹n des main blocks rekursive
+      Durchlﾃ､ufe bei allen Wurzeln starten.
       *)
 
 
@@ -2817,7 +2824,7 @@ begin
       begin
         (* __loadstr always reserves 256 bytes on the stack regardless of the
            declared string length, so cleanup must always free 256 bytes for
-           string value parameters — not just DataType^.Value (= N+1). *)
+           string value parameters 窶・not just DataType^.Value (= N+1). *)
         if Sym^.ArgTypes[I]^.Kind = scStringType then J := 256 else
         begin
           J := Sym^.ArgTypes[I]^.Value;
@@ -2885,6 +2892,12 @@ begin
                 SetDefine('SYS_ZX', True);
                 SetDefine('SYS_ZXNEXT', True);
                 EmitI('device ZXSPECTRUMNEXT');
+              end;
+
+    btG850:   begin
+                SetDefine('CPU_Z80', True);
+                SetDefine('SYS_G850', True);
+                EmitI('device NOSLOT64K');
               end;
   end;
 
@@ -3002,7 +3015,7 @@ begin
     EmitI('db ' + IntToStr(CurrentOverlay));
   end;
 
-  if Binary = btCPM then
+  if (Binary = btCPM) or (Binary = btG850) then
     EmitI('savebin "' + BinFile + '",$0100,HEAP-$0100')
   else if Binary = btAgon then
   begin
@@ -3096,7 +3109,7 @@ begin
   for I := 1 to Length(S) do
   begin
     C := S[I];
-    if (C < ' ') or (C > '~') or (C = '"') or (C = '´') or (C = '\') then
+    if (C < ' ') or (C > '~') or (C = '"') or (C = 'ﾂｴ') or (C = '\') then
     begin
       if Quotes then
       begin
@@ -3766,7 +3779,7 @@ begin
   else if DataType^.Kind = scStringType then
   begin
     EmitI('pop de');
-    { String on stack }
+    {ﾂString on stack }
     EmitI('call __strs');
   end
   else if DataType = dtReal then
@@ -3813,7 +3826,7 @@ begin
   else if DataType^.Kind = scStringType then
   begin
     EmitI('pop de');
-    { String on stack }
+    {ﾂString on stack }
     EmitI('call __strs');
   end
   else if DataType = dtReal then
@@ -7837,6 +7850,8 @@ begin
     OpenInput(HomeDir + '/rtl/zx128.pas')
   else if Binary = btAgon then
     OpenInput(HomeDir + '/rtl/agon.pas')
+  else if Binary = btg850 then
+    OpenInput(HomeDir + '/rtl/g850.pas')
   else
     OpenInput(HomeDir + '/rtl/next.pas');
 
@@ -7891,6 +7906,63 @@ var
   StartTime: Int64;
   Duration: Real;
   Sym: PSymbol;
+  
+  procedure BinToHexFile(const BinName, HexName: string; BaseAddr: Word);
+  var
+    Bin: TFileStream;
+    Hex: TFileStream;
+    Buf: array [0..15] of Byte;
+    Addr: Word;
+    ReadBytes: Integer;
+    procedure WriteHexRecord(const S: TStream; Addr: Word; RecType: Byte;
+      const Data: array of Byte; DataLen: Integer);
+    var
+      i: Integer;
+      sum: Integer;
+      line: string;
+      function ByteToHex(b: Byte): string;
+      const
+        HexChars: PChar = '0123456789ABCDEF';
+      begin
+        Result := HexChars[(b shr 4) and $0F] + HexChars[b and $0F];
+      end;
+    begin
+      line := ':' + ByteToHex(DataLen);
+      line := line + ByteToHex(Addr shr 8) + ByteToHex(Addr and $FF);
+      line := line + ByteToHex(RecType);
+      sum := DataLen + (Addr shr 8) + (Addr and $FF) + RecType;
+      for i := 0 to DataLen - 1 do
+      begin
+        line := line + ByteToHex(Data[i]);
+        Inc(sum, Data[i]);
+      end;
+      sum := ((not sum) + 1) and $FF;
+      line := line + ByteToHex(sum) + #13#10;
+      S.WriteBuffer(PChar(line)^, Length(line));
+    end;
+  begin
+    Bin := TFileStream.Create(BinName, fmOpenRead or fmShareDenyWrite);
+    try
+      Hex := TFileStream.Create(HexName, fmCreate);
+      try
+        Addr := BaseAddr;
+        while True do
+        begin
+          ReadBytes := Bin.Read(Buf[0], SizeOf(Buf));
+          if ReadBytes <= 0 then
+            Break;
+          WriteHexRecord(Hex, Addr, $00, Buf, ReadBytes);
+          Inc(Addr, ReadBytes);
+        end;
+        WriteHexRecord(Hex, $0000, $01, [], 0);
+      finally
+        Hex.Free;
+      end;
+    finally
+      Bin.Free;
+    end;
+  end;
+  
 begin
   StartTime := GetMSCount;
 
@@ -7906,6 +7978,9 @@ begin
     BinFile := ChangeExt(SrcFile, '.tap')
   else if Format = tfSnapshot then
     BinFile := ChangeExt(SrcFile, '.sna');
+
+  if Binary = btg850 then
+    HexFile := ChangeExt(SrcFile, '.hex');
 
   if SetJmp(StoredState) = 0 then
   begin
@@ -7960,6 +8035,8 @@ begin
 
     if Binary = btCPM then
       AddrOrigin := $0100
+    else if Binary = btG850 then
+      AddrOrigin := $0100
     else if Binary = btAgon then
       AddrOrigin := $0000
     else
@@ -7967,6 +8044,8 @@ begin
 
     if Binary = btCPM then
       AddrLimit := $f000
+    else if Binary = btG850 then
+      AddrLimit  := $8000  
     else if (Binary = btZX128) and Overlays then
       AddrLimit := $c000
     else if (Binary = btZXN) and Overlays then
@@ -8007,6 +8086,15 @@ begin
     if DosExitCode <> 0 then
       Error('Assembly failed (see output for details).');
 
+    if (Binary = btg850) and (DosError = 0) and (DosExitCode = 0) then
+    begin
+      WriteLn;
+      WriteLn('Converting...');
+      WriteLn('  ', PosixToNative(FRelative(BinFile)), ' -> ', PosixToNative(FRelative(HexFile)));
+      WriteLn;
+      BinToHexFile(BinFile, HexFile, AddrOrigin);
+    end;  
+      
     Duration := (GetMSCount - StartTime) / 1000.0;
 
     WriteLn;
@@ -8028,7 +8116,7 @@ const
   (**
    * Printable names of supported platforms. Must be aligned with TBinaryType.
    *)
-  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next', 'Agon');
+  BinaryStr: array[TBinaryType] of String = ('CP/M', 'ZX 48K', 'ZX 128K', 'ZX Next', 'Agon', 'G850');
 
   (**
    * Printable names of supported formats. Must be aligned with TTargetFormat.
@@ -8091,7 +8179,7 @@ function SupportsFormat(Binary: TBinaryType; Format: TTargetFormat): Boolean;
 begin
   case Binary of
     btAgon:   SupportsFormat := Format in [tfBinary, tfMosLet];
-    btCPM:    SupportsFormat := Format = tfBinary;
+    btCPM, btG850:    SupportsFormat := Format = tfBinary;
     btZX, 
     btZX128:  SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfSnapshot];
     btZXN:    SupportsFormat := Format in [tfBinary, tfPlus3Dos, tfTape, tfRunDir];
@@ -8106,6 +8194,7 @@ begin
   case Binary of
     btAgon:   SupportsOverlays := Format = tfBinary;
     btCPM,
+    btG850,
     btZX:     SupportsOverlays := False;
     btZX128,
     btZXN:    SupportsOverlays := True;
@@ -8166,10 +8255,17 @@ begin
   end
   else
   begin
+{$ifdef windows}
+    if (Line <> 0) and (Column <> 0) then
+      Execute(NanoCmd, '-Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
+    else
+      Execute(NanoCmd, '-Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
+{$else}
     if (Line <> 0) and (Column <> 0) then
       Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc +' + IntToStr(Line) + ',' + IntToStr(Column) + ' ' + S)
     else
       Execute(NanoCmd, '--minibar -Aicl --rcfile ' + HomeDir + '/misc/pascal.nanorc ' + S);
+{$endif}
   end;
 end;
 
@@ -8223,6 +8319,12 @@ begin
       end
       else
         Execute(TnylpoCmd, BinFile)
+    end
+    else if Binary = btG850 then
+    begin
+      if AltEditor then Write(#27'[40m');
+      Execute(G800Cmd, '-machine=g850  ' + HexFile + ' 100');
+      if AltEditor then Write(#27'[0m');
     end
     else if Binary = btAgon then
     begin
@@ -8590,6 +8692,8 @@ begin
       Binary := btZXN
     else if SrcFile = '--agon' then
       Binary := btAgon
+    else if SrcFile = '--g850' then
+      Binary := btg850
     else if SrcFile = '--ovr' then
       Overlays := True
     else if SrcFile = '--bin' then
