@@ -10,7 +10,6 @@ const
   ScreenHeight = 6;
   LineBreak    = #13#10;
 
-
- { ここに RTL のルーチンを書いてね }
+ { Please write the RTL routine here. }
   
 end.
