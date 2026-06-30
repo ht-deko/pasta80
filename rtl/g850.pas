@@ -47,6 +47,16 @@ procedure _gprint(var buf: Byte); register; inline
   $CD / $D0 / $BF    (* CALL BFD0h *)
 );
 
+
+procedure _ginput(var buf: Byte); register; inline
+(
+                     (* HL := @buf *)
+  $06 / $08 /        (* LD B,8     *)
+  $16 / $00 /        (* LD D,0     *)
+  $1E / $00 /        (* LD E,0     *)
+  $CD / $00 / $BD    (* CALL BD00h *)
+);
+
 { Clear LCD }
 procedure Cls;
 begin
@@ -95,7 +105,18 @@ begin
   p[1] := l;
   p[3] := y;
   p[5] := x;
-  _gprint(buf);
+  _gprint(buf);    
+end;
+
+{ Read pixel data from LCD }
+procedure GInput(x, y: Byte; var buf: Byte; l: Byte);
+var
+  p: array [0..8] of Byte absolute _ginput;
+begin
+  p[1] := l;
+  p[3] := y;
+  p[5] := x;
+  _ginput(buf);
 end;
 
 { Tests if a key has been pressed (no wait) }
