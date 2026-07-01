@@ -10,23 +10,6 @@ const
   ScreenHeight = 6;
   LineBreak    = #13#10;
 
-procedure _putc; register; inline
-(
-  $3E / $20 /        (* LD A,' '   *)
-  $16 / $00 /        (* LD D,0     *)
-  $1E / $00 /        (* LD E,0     *)
-  $CD / $62 / $BE    (* CALL BE62h *)
-);
-
-procedure _putcn; register; inline
-(
-  $3E / $20 /        (* LD A,' '   *)
-  $06 / $90 /        (* LD B,144   *)
-  $16 / $00 /        (* LD D,0     *)
-  $1E / $00 /        (* LD E,0     *)
-  $CD / $EE / $BF    (* CALL BFEEh *)
-);
-
 function _puts(var s: string): Byte; register; inline
 (
                      (* HL := @s   *)
@@ -57,33 +40,31 @@ procedure _ginput(var buf: Byte); register; inline
   $CD / $00 / $BD    (* CALL BD00h *)
 );
 
+{ Print a single character to the LCD }
+procedure PutChar(x, y: Byte; c: Char); register; inline
+(
+  $79 /              (* LD   A,C (C = c) *)
+  $53 /              (* LD   D,E (E = y) *)
+  $5D /              (* LD   E,L (L = x) *)
+  $CD / $62 / $BE    (* CALL BE62h       *)
+);
+
+{ Repeatedly print a single character to the LCD }
+procedure PutChars(x, y: Byte; c: Char; n: Byte); register; inline
+(
+  $7B /              (* LD   A,E (E = c) *)
+  $55 /              (* LD   D,L (L = y) *)
+  $21 / $02 / $00 /  (* LD   HL,2        *)
+  $39 /              (* ADD  HL,SP       *)
+  $5E /              (* LD   E,(HL)      *)
+  $41 /              (* LD   B,C (C = n) *)
+  $CD / $EE / $BF    (* CALL BFEEh       *)  
+);
+
 { Clear LCD }
 procedure Cls;
 begin
-  _putcn;
-end;
-
-{ Print a single character to the LCD }
-procedure PutChar(x, y: Byte; c: Char);
-var
-  p: array [0..8] of Byte absolute _putc;
-begin
-  p[1] := Ord(c);
-  p[3] := y;
-  p[5] := x;
-  _putc;
-end;
-
-{ Repeatedly print a single character to the LCD }
-procedure PutChars(x, y: Byte; c: Char; n: Byte);
-var
-  p: array [0..10] of Byte absolute _putcn;
-begin
-  p[1] := Ord(c);
-  p[3] := n;
-  p[5] := y;
-  p[7] := x;
-  _putcn;
+  PutChars(0, 0, ' ', ScreenWidth * ScreenHeight);
 end;
   
 { Print a string to the LCD }  
