@@ -1365,7 +1365,7 @@ __rpl_lcd_loop:
 ; g850_restorebg
 ; =====================================================================
 g850_restorebg:
-        ld   hl, __bg_vram
+        ld   hl, (__bg_vram_addr)
         ld   de, __vram   
         ld   bc, 864      
         ldir              
@@ -1377,7 +1377,7 @@ g850_restorebg:
 ; =====================================================================
 g850_savebg:
         ld   hl, __vram    
-        ld   de, __bg_vram 
+        ld   de, (__bg_vram_addr) 
         ld   bc, 864       
         ldir               
         ret
@@ -1532,7 +1532,7 @@ __upd_get_vram:
 
 
 ; =====================================================================
-; g850_GetVramAddr / GetBgVramAddr / GetPatternAddr
+; g850_get_vram_addr / g850_get_bg_addr / g850_get_pattern_addr
 ;   Output: HL = Address
 ; =====================================================================
 g850_get_vram_addr:
@@ -1540,12 +1540,22 @@ g850_get_vram_addr:
         ret
 
 g850_get_bg_addr:
-        ld   hl, __bg_vram
+        ld   hl, (__bg_vram_addr)
         ret
 
 g850_get_pattern_addr:
         ld   hl, __current_pattern
         ret
+	
+	
+; =====================================================================
+; g850_SetBGAddr
+;   Input: HL = Pascal側で確保したBG配列のアドレス
+; =====================================================================
+g850_setbgaddr:
+        call __regout
+        ld   (__bg_vram_addr), hl
+        ret	
 
 ; =====================================================================
 ; Misc Routine
@@ -1695,4 +1705,4 @@ __fp_top_mask_tbl: .db 0FFh, 0FEh, 0FCh, 0F8h, 0F0h, 0E0h, 0C0h, 080h
 __fp_bot_mask_tbl: .db 001h, 003h, 007h, 00Fh, 01Fh, 03Fh, 07Fh, 0FFh
 __fs_stack:     .ds 128
 __vram:         .ds 864 
-__bg_vram:      .ds 864
+__bg_vram_addr: .ds 2
