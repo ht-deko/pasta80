@@ -46,7 +46,6 @@ procedure SaveBG; external 'g850_savebg';
 procedure SetBGAddr(adr: Integer); register; external 'g850_setbgaddr';
 procedure UpdateLCD(X1, Y1, X2, Y2: Byte); register; external 'g850_updatelcd';
 
-
 // ---------------------------------------------------------------------
 // Helper Routines
 // ---------------------------------------------------------------------

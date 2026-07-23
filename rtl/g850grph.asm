@@ -1550,10 +1550,9 @@ g850_get_pattern_addr:
 	
 ; =====================================================================
 ; g850_SetBGAddr
-;   Input: HL = Pascal側で確保したBG配列のアドレス
+;   Input: HL = Address
 ; =====================================================================
 g850_setbgaddr:
-        call __regout
         ld   (__bg_vram_addr), hl
         ret	
 
