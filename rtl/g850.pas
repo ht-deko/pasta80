@@ -12,10 +12,6 @@ const
   
 type
   TKeyArray= array[0..9] of Byte;  
-  TIFMode = (ifmNormal, ifmPIO, ifmUART);
-  TIOMode = (iomOutput, iomInput);
-  TPin = (bit0, bit1, bit2, bit3, bit4, bit5, bit6, bit7);
-  TIOLevel = (iolLow, iolHigh);
   
 (* --------------------------------------------------------------------- *)
 (* --- Internal functions ---------------------------------------------- *)
@@ -217,25 +213,13 @@ end;
 { Delay }
 procedure Delay(ms: Integer); register; external 'g850_delay';
 
-{ DigitalRead }
-function DigitalRead(Pin: TPin): TIOLevel; register; external 'g850_digitalread';
-
-{ DigitalWrite }
-procedure DigitalWrite(Pin: TPin; Value: TIOLevel); register; external 'g850_digitalWrite';
-
 { InitJoystick }
 procedure InitJoystick; register; external 'g850_init_joystick';
-
-{ PinMode }
-procedure PinMode(Pin: TPin; Mode: TIOMode); register; external 'g850_pinmode';
-
-{ ScanKeyboard }
-procedure ScanKeyboard(var Keys: TKeyArray); register; external 'g850_scankeyboard';
 
 { ReadJoystick }
 function ReadJoystick: byte; register; external 'g850_read_joystick';
 
-{ SetIFMode }
-procedure SetIFMode(Mode: TIFMode); register; external 'g850_setifmode';
+{ ScanKeyboard }
+procedure ScanKeyboard(var Keys: TKeyArray); register; external 'g850_scankeyboard';
 
 end.

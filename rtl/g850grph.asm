@@ -1,3 +1,7 @@
+; =========================================================================
+; === PC-G850 Graphics run-time library ===================================
+; =========================================================================
+
 ; =====================================================================
 ; g850_box
 ;   Input:  Stack #2 (ix+4) = X1
@@ -7,40 +11,8 @@
 ;           C = Color
 ; =====================================================================
 g850_box:
-        push ix
-        ld   ix, 2
-        add  ix, sp
-        ld   a, (ix+4)
-        ld   (__bx_x1), a
-        ld   a, (ix+2)
-        ld   (__bx_y1), a
-        ld   a, l
-        ld   (__bx_x2), a
-        ld   a, e
-        ld   (__bx_y2), a
-        ld   a, c
-        ld   (__bx_color), a
-        pop  ix
-        ld   a, (__bx_x1)
-        ld   hl, __bx_x2
-        cp   (hl)
-        jr   c, __bx_x_ok
-        jr   z, __bx_x_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__bx_x1), a
-__bx_x_ok:
-        ld   a, (__bx_y1)
-        ld   hl, __bx_y2
-        cp   (hl)
-        jr   c, __bx_y_ok
-        jr   z, __bx_y_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__bx_y1), a
-__bx_y_ok:
+        call __load_rect_args
+        call __sort_coords
         ld   a, (__bx_x1)
         ld   (__bx_cur), a
 __bx_h_loop:
@@ -86,17 +58,12 @@ __bx_v_loop:
         ld   a, (__bx_cur)
         ld   hl, __bx_y2
         cp   (hl)
-        jr   z, __bx_exit
+        jp   z, __exit_2args
         inc  a
         ld   (__bx_cur), a
         jr   __bx_v_loop
-__bx_exit:
-        pop  hl
-        pop  bc
-        pop  bc
-        jp   (hl)
-
-
+	
+	
 ; =====================================================================
 ; g850_circle
 ;   Input:  Stack #1 (ix+2) = X
@@ -125,7 +92,7 @@ g850_circle:
 __cx_loop:
         ld   a, b
         cp   c
-        jr   c, __cx_exit 
+        jp   c, __exit_1arg 
         call __cx_plot_8
         ld   e, c    
         ld   d, 0    
@@ -145,12 +112,6 @@ __cx_loop:
         add  hl, de            
 __cx_loop_next:
         jp   __cx_loop
-
-__cx_exit:                    
-        pop  hl
-        pop  bc            
-        jp   (hl)
-
 __cx_plot_8:
         push bc
         push hl                
@@ -213,7 +174,6 @@ __cx_plot_8:
         pop  hl
         pop  bc
         ret
-
 __cx_clip_plot:
         ld   a, l
         cp   144
@@ -242,20 +202,7 @@ __cx_clip_plot:
 ;           C = Color (0 (white) / 1 (Black))
 ; =====================================================================
 g850_draw:
-        push ix
-        ld   ix, 2
-        add  ix, sp
-        ld   a, (ix+4)   
-        ld   (__dr_x1), a
-        ld   a, (ix+2)   
-        ld   (__dr_y1), a
-        ld   a, l        
-        ld   (__dr_x2), a
-        ld   a, e        
-        ld   (__dr_y2), a
-        ld   a, c        
-        ld   (__dr_color), a
-        pop  ix
+        call __load_rect_args
         ld   a, (__dr_x2)
         ld   hl, __dr_x1
         sub  (hl)
@@ -288,12 +235,10 @@ __opt3_dy_done:
         ld   hl, __dr_dy
         cp   (hl)
         jr   c, __opt3_y_major
-
 __opt3_x_major:
         ld   a, (__dr_dx)
         srl  a
         ld   (__dr_err), a
-
 __opt3_x_loop:
         ld   a, (__dr_x1)
         ld   l, a
@@ -305,7 +250,7 @@ __opt3_x_loop:
         ld   a, (__dr_x1)
         ld   hl, __dr_x2
         cp   (hl)
-        jr   z, __dr_exit
+        jp   z, __exit_2args
         ld   hl, __dr_step_x
         add  a, (hl)
         ld   (__dr_x1), a
@@ -324,12 +269,10 @@ __opt3_x_loop:
 __opt3_x_loop_save:
         ld   (__dr_err), a
         jr   __opt3_x_loop
-
 __opt3_y_major:
         ld   a, (__dr_dy)
         srl  a
         ld   (__dr_err), a
-
 __opt3_y_loop:
         ld   a, (__dr_x1)
         ld   l, a
@@ -341,7 +284,7 @@ __opt3_y_loop:
         ld   a, (__dr_y1)
         ld   hl, __dr_y2
         cp   (hl)
-        jr   z, __dr_exit
+        jp   z, __exit_2args
         ld   hl, __dr_step_y
         add  a, (hl)
         ld   (__dr_y1), a
@@ -360,14 +303,8 @@ __opt3_y_loop:
 __opt3_y_loop_save:
         ld   (__dr_err), a
         jr   __opt3_y_loop
-
-__dr_exit:
-        pop  hl
-        pop  bc                
-        pop  bc                
-        jp   (hl)
-
-
+	
+	
 ; =====================================================================
 ; g850_fillbox
 ;   Input:  Stack #2 (ix+4) = X1
@@ -377,40 +314,8 @@ __dr_exit:
 ;           C = Color
 ; =====================================================================
 g850_fillbox:
-        push ix
-        ld   ix, 2
-        add  ix, sp
-        ld   a, (ix+4)
-        ld   (__fb_x1), a
-        ld   a, (ix+2)
-        ld   (__fb_y1), a
-        ld   a, l
-        ld   (__fb_x2), a
-        ld   a, e
-        ld   (__fb_y2), a
-        ld   a, c
-        ld   (__fb_color), a
-        pop  ix
-        ld   a, (__fb_x1)
-        ld   hl, __fb_x2
-        cp   (hl)
-        jr   c, __fb_x_ok
-        jr   z, __fb_x_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__fb_x1), a
-__fb_x_ok:
-        ld   a, (__fb_y1)
-        ld   hl, __fb_y2
-        cp   (hl)
-        jr   c, __fb_y_ok
-        jr   z, __fb_y_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__fb_y1), a
-__fb_y_ok:
+        call __load_rect_args
+        call __sort_coords
         ld   a, (__fb_color)
         or   a
         jr   nz, __fb_col_black
@@ -420,121 +325,55 @@ __fb_col_black:
         ld   a, 0FFh
 __fb_col_done:
         ld   (__fb_col_byte), a
-        
-        ld   a, (__fb_x1)
-        ld   (__fb_cur_x), a
-        ld   a, (__fb_y1)
-        srl  a
-        srl  a
-        srl  a
-        ld   (__fb_start_page), a
-        ld   a, (__fb_y2)
-        srl  a
-        srl  a
-        srl  a
-        ld   (__fb_end_page), a
-        ld   a, (__fb_y1)
-        and  7
-        ld   e, a
-        ld   d, 0
-        ld   hl, __fp_top_mask_tbl
-        add  hl, de
-        ld   a, (hl)
-        ld   (__fb_top_mask), a
-        ld   a, (__fb_y2)
-        and  7
-        ld   e, a
-        ld   d, 0
-        ld   hl, __fp_bot_mask_tbl
-        add  hl, de
-        ld   a, (hl)
-        ld   (__fb_bot_mask), a
-
+        call __setup_fill_masks
 __fb_x_loop:
-        ld   a, (__fb_start_page)
-        ld   hl, __fb_end_page
-        cp   (hl)
-        jp   nz, __fb_multi_page
-
-__fb_single_page:
-        ld   a, (__fb_top_mask)
-        ld   hl, __fb_bot_mask
-        and  (hl)
-        ld   b, a   
-        ld   a, (__fb_cur_x)
-        ld   c, a
-        ld   a, (__fb_start_page)
-        call __fp_get_vram
-        ld   a, b   
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fb_col_byte)
-        and  b      
-        or   e
-        ld   (hl), a
-        jp   __fb_next_x
-        
-__fb_multi_page:
-        ld   a, (__fb_cur_x)
-        ld   c, a
-        ld   a, (__fb_start_page)
-        call __fp_get_vram
-        ld   a, (__fb_top_mask)
-        ld   d, a
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fb_col_byte)
-        and  d
-        or   e
-        ld   (hl), a
-        ld   a, (__fb_start_page)
-        inc  a
-        ld   b, a
-        ld   a, (__fb_end_page)
-        cp   b
-        jr   z, __fb_bottom_page
-
-__fb_mid_loop:
-        ld   de, 144
-        add  hl, de
-        ld   a, (__fb_col_byte)
-        ld   (hl), a
-        inc  b
-        ld   a, (__fb_end_page)
-        cp   b
-        jr   nz, __fb_mid_loop
-
-__fb_bottom_page:
-        ld   a, (__fb_cur_x)
-        ld   c, a
-        ld   a, (__fb_end_page)
-        call __fp_get_vram
-        ld   a, (__fb_bot_mask)
-        ld   d, a
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fb_col_byte)
-        and  d
-        or   e
-        ld   (hl), a
-
-__fb_next_x:
+        call __fill_column
         ld   a, (__fb_cur_x)
         ld   hl, __fb_x2
         cp   (hl)
-        jr   z, __fb_exit
+        jp   z, __exit_2args
         inc  a
         ld   (__fb_cur_x), a
-        jp   __fb_x_loop
-
-__fb_exit:               
-        pop  hl
-        pop  bc          
-        pop  bc               
-        jp   (hl)
+        jr   __fb_x_loop
+	
+	
+; =====================================================================
+; g850_fillpattern
+;   Input:  Stack #2 (ix+4) = X1
+;           Stack #1 (ix+2) = Y1
+;           L = X2
+;           E = Y2
+;           C = Color
+; =====================================================================
+g850_fillpattern:
+        call __load_rect_args
+        call __sort_coords
+        call __setup_fill_masks
+__fp_x_loop:
+        ld   a, (__fp_cur_x)
+        and  7
+        ld   e, a
+        ld   d, 0
+        ld   hl, __current_pattern
+        add  hl, de
+        ld   b, (hl)
+        ld   a, (__fp_color)
+        or   a
+        jr   nz, __fp_no_inv
+        ld   a, b
+        cpl
+        ld   b, a
+__fp_no_inv:
+        ld   a, b
+        ld   (__fp_col_byte), a
+        call __fill_column
+        ld   a, (__fp_cur_x)
+        ld   hl, __fp_x2
+        cp   (hl)
+        jp   z, __exit_2args
+        inc  a
+        ld   (__fp_cur_x), a
+        jr   __fp_x_loop
 
 
 ; =====================================================================
@@ -547,39 +386,11 @@ g850_fillscreen:
         ld   hl,__vram
         ld   (hl),a
         ld   de,__vram+1
-        ld   bc,864-1
+        ld   bc,863
         ldir
-        ld   c,0B0h
-        ld   hl,__vram
-__YLoop:
-        ld   b,0
-        ld   a,c
-        out  (40h),a
-__XLoop:
-        ld   a,b
-        and  0x0F
-        out  (40h),a
-        ld   a,b
-        srl  a
-        srl  a
-        srl  a
-        srl  a
-        or   0x10
-        out  (40h),a
-        ld   a,(hl)
-        out  (41h),a
-        inc  hl
-        inc  b
-        ld   a,b
-        cp   144
-        jr   nz,__XLoop
-        inc  c
-        ld   a,c
-        cp   0B6h
-        jr   nz,__YLoop
         ret
 
-
+	
 ; =====================================================================
 ; g850_fillshape
 ;   Input:  L = X
@@ -607,7 +418,6 @@ g850_fillshape:
         ld   a, (__fs_start_y)
         ld   c, a
         call __fs_push_seed
-        
 __fs_main_loop:
         call __fs_pop_seed
         ret  c
@@ -738,7 +548,6 @@ __fs_scan_line_end:
         pop  de
         pop  bc
         ret
-
 __fs_push_seed:
         push hl
         ld   hl, (__fs_sp)
@@ -749,7 +558,6 @@ __fs_push_seed:
         ld   (__fs_sp), hl
         pop  hl
         ret
-        
 __fs_pop_seed:
         push hl
         ld   hl, (__fs_sp)
@@ -770,202 +578,8 @@ __fs_stack_empty:
         pop  hl
         scf                
         ret
-
-
-; =====================================================================
-; g850_fillpattern
-;   Input:  Stack #2 (ix+4) = X1
-;           Stack #1 (ix+2) = Y1
-;           L = X2
-;           E = Y2
-;           C = Color
-; =====================================================================
-g850_fillpattern:
-        push ix
-        ld   ix, 2
-        add  ix, sp
-        ld   a, (ix+4)
-        ld   (__fp_x1), a
-        ld   a, (ix+2)
-        ld   (__fp_y1), a
-        ld   a, l
-        ld   (__fp_x2), a
-        ld   a, e
-        ld   (__fp_y2), a
-        ld   a, c
-        ld   (__fp_color), a
-        pop  ix
-        ld   a, (__fp_x1)
-        ld   hl, __fp_x2
-        cp   (hl)
-        jr   c, __fp_x_ok
-        jr   z, __fp_x_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__fp_x1), a
-__fp_x_ok:
-        ld   a, (__fp_y1)
-        ld   hl, __fp_y2
-        cp   (hl)
-        jr   c, __fp_y_ok
-        jr   z, __fp_y_ok
-        ld   b, (hl)
-        ld   (hl), a
-        ld   a, b
-        ld   (__fp_y1), a
-__fp_y_ok:
-        ld   a, (__fp_x1)
-        ld   (__fp_cur_x), a
-__fp_x_loop:
-        ld   a, (__fp_cur_x)
-        and  7
-        ld   e, a
-        ld   d, 0
-        ld   hl, __current_pattern
-        add  hl, de
-        ld   b, (hl)
-        ld   a, (__fp_color)
-        or   a
-        jr   nz, __fp_no_inv
-        ld   a, b
-        cpl
-        ld   b, a
-__fp_no_inv:
-        ld   a, b
-        ld   (__fp_col_byte), a
-        ld   a, (__fp_y1)
-        srl  a
-        srl  a
-        srl  a
-        ld   (__fp_start_page), a
-        ld   a, (__fp_y2)
-        srl  a
-        srl  a
-        srl  a
-        ld   (__fp_end_page), a
-        ld   a, (__fp_y1)
-        and  7
-        ld   e, a
-        ld   d, 0
-        ld   hl, __fp_top_mask_tbl
-        add  hl, de
-        ld   a, (hl)
-        ld   (__fp_top_mask), a
-        ld   a, (__fp_y2)
-        and  7
-        ld   e, a
-        ld   d, 0
-        ld   hl, __fp_bot_mask_tbl
-        add  hl, de
-        ld   a, (hl)
-        ld   (__fp_bot_mask), a
-        ld   a, (__fp_start_page)
-        ld   hl, __fp_end_page
-        cp   (hl)
-        jp   nz, __fp_multi_page
-
-__fp_single_page:
-        ld   a, (__fp_top_mask)
-        ld   hl, __fp_bot_mask
-        and  (hl)
-        ld   b, a             
-        ld   a, (__fp_cur_x)
-        ld   c, a
-        ld   a, (__fp_start_page)
-        call __fp_get_vram
-        ld   a, b             
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fp_col_byte)
-        and  b                
-        or   e
-        ld   (hl), a
-        jp   __fp_next_x
-
-__fp_multi_page:
-        ld   a, (__fp_cur_x)
-        ld   c, a
-        ld   a, (__fp_start_page)
-        call __fp_get_vram
-        ld   a, (__fp_top_mask)
-        ld   d, a
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fp_col_byte)
-        and  d
-        or   e
-        ld   (hl), a
-        ld   a, (__fp_start_page)
-        inc  a
-        ld   b, a
-        ld   a, (__fp_end_page)
-        cp   b
-        jr   z, __fp_bottom_page
-
-__fp_mid_loop:
-        ld   de, 144
-        add  hl, de
-        ld   a, (__fp_col_byte)
-        ld   (hl), a
-        inc  b
-        ld   a, (__fp_end_page)
-        cp   b
-        jr   nz, __fp_mid_loop
-
-__fp_bottom_page:
-        ld   a, (__fp_cur_x)
-        ld   c, a
-        ld   a, (__fp_end_page)
-        call __fp_get_vram
-        ld   a, (__fp_bot_mask)
-        ld   d, a
-        cpl
-        and  (hl)
-        ld   e, a
-        ld   a, (__fp_col_byte)
-        and  d
-        or   e
-        ld   (hl), a
-
-__fp_next_x:
-        ld   a, (__fp_cur_x)
-        ld   hl, __fp_x2
-        cp   (hl)
-        jr   z, __fp_exit
-        inc  a
-        ld   (__fp_cur_x), a
-        jp   __fp_x_loop
-
-__fp_exit:               
-        pop  hl
-        pop  bc          
-        pop  bc               
-        jp   (hl)
-
-__fp_get_vram:
-        ld   h, 0
-        ld   l, a
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        ld   d, h
-        ld   e, l
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, de
-        ld   d, 0
-        ld   e, c
-        add  hl, de
-        ld   de, __vram
-        add  hl, de
-        ret
-
-
+	
+	
 ; =====================================================================
 ; g850_getdotcolor
 ;   Input:  L = X (0..143)
@@ -974,10 +588,6 @@ __fp_get_vram:
 ; =====================================================================
 g850_getdotcolor:
         call __prep_vram_and_mask
-        call __read_dot 
-        ret
-        
-__read_dot:
         ld   a,(hl)
         ld   b,a
         ld   a,(__px_mask)
@@ -988,8 +598,8 @@ __read_dot:
 __dot_white:
         ld   l,0
         ret
-
-
+	
+	
 ; =====================================================================
 ; g850_getpattern
 ;   Input: HL = Address of TPattern (var P)
@@ -997,10 +607,8 @@ __dot_white:
 ; =====================================================================
 g850_getpattern:
         ld   de, hl                
-        ld   hl, __current_pattern 
-        ld   bc, 8                  
-        ldir                      
-        ret
+        ld   hl, __current_pattern
+        jr   __copy_8_bytes
 
 
 ; =====================================================================
@@ -1011,7 +619,26 @@ g850_getpattern:
 g850_getmask:
         ld   de, hl                
         ld   hl, __mask_pattern 
-        ld   bc, 8                  
+        jr   __copy_8_bytes
+
+
+; =====================================================================
+; g850_pattern (8x8)
+;   Input:  HL = Address of TPattern (var P)
+; =====================================================================
+g850_pattern:
+        ld   de, __current_pattern
+        jr   __copy_8_bytes
+
+
+; =====================================================================
+; g850_mask (8x8)
+;   Input:  HL = Address of TPattern (var P)
+; =====================================================================
+g850_mask:
+        ld   de, __mask_pattern
+__copy_8_bytes:
+        ld   bc, 8                
         ldir                      
         ret
 
@@ -1049,7 +676,7 @@ __gs_col_loop:
         ld   a, (__gs_x)
         ld   c, a
         ld   a, (__gs_page)
-        call __gs_get_vram
+        call __calc_vram_addr
         ld   a, (hl)
         ld   (__gs_data_l), a
         jr   __gs_read_h_cont
@@ -1065,7 +692,7 @@ __gs_read_h_cont:
         ld   a, (__gs_x)
         ld   c, a
         ld   a, d
-        call __gs_get_vram
+        call __calc_vram_addr
         ld   h, (hl)              
         ld   a, (__gs_data_l)
         ld   l, a                 
@@ -1077,13 +704,12 @@ __gs_shift_start:
 __gs_do_shift:
         ld   a, (__gs_shift)
         or   a
-        jr   z, __gs_store_val    
+        jr   z, __gs_store    
         ld   b, a
 __gs_shift_loop:
         srl  h                    
         rr   l                    
         djnz __gs_shift_loop
-__gs_store_val:
 __gs_store:
         ld   a, l
         ld   hl, (__gs_pat_ptr)
@@ -1096,47 +722,6 @@ __gs_store:
         pop  bc
         djnz __gs_col_loop
         ret                       
-__gs_get_vram:
-        ld   h, 0
-        ld   l, a
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        ld   d, h
-        ld   e, l
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, de
-        ld   d, 0
-        ld   e, c
-        add  hl, de
-        ld   de, __vram
-        add  hl, de
-        ret        
-        
-        
-; =====================================================================
-; g850_pattern (8x8)
-;   Input:  HL = Address of TPattern (var P)
-; =====================================================================
-g850_pattern:
-        ld   de, __current_pattern
-        ld   bc, 8                
-        ldir                      
-        ret
-
-
-; =====================================================================
-; g850_mask (8x8)
-;   Input:  HL = Address of TPattern (var P)
-; =====================================================================
-g850_mask:
-        ld   de, __mask_pattern
-        ld   bc, 8                
-        ldir                      
-        ret
 
 
 ; =====================================================================
@@ -1146,18 +731,9 @@ g850_mask:
 ;           C = Color
 ; =====================================================================
 g850_plot:
-        call __setcolor
+        ld   a, c
+        ld   (__px_color), a
         call __prep_vram_and_mask
-        call __plot_core
-        ; call __lcd_sync_cell      
-        ret
-
-__setcolor:
-        ld   a,c
-        ld   (__px_color),a
-        ret
-
-__plot_core:
         ld   a,(__px_color)
         or   a
         jr   z,__do_preset
@@ -1173,24 +749,6 @@ __do_preset:
         cpl
         and  (hl)
         ld   (hl),a
-        ret
-
-__lcd_sync_cell:
-        ld   a,(__y_page)
-        or   0B0h
-        out  (40h),a
-        ld   a,(__x_raw)
-        and  0Fh
-        out  (40h),a
-        ld   a,(__x_raw)
-        srl  a
-        srl  a
-        srl  a
-        srl  a
-        or   010h
-        out  (40h),a
-        ld   a,(hl)
-        out  (41h),a
         ret
 
 
@@ -1261,7 +819,7 @@ __ps_shift_done:
         ld   a, (__ps_x)     
         ld   c, a            
         ld   a, (__ps_page)  
-        call __ps_get_vram   
+        call __calc_vram_addr   
         ld   a, (__ps_use_mask)
         or   a
         jr   z, __ps_draw_p1_nomask
@@ -1285,7 +843,7 @@ __ps_draw_page2:
         ld   c, a             
         ld   a, (__ps_page)
         inc  a                
-        call __ps_get_vram    
+        call __calc_vram_addr    
         ld   a, (__ps_use_mask)
         or   a
         jr   z, __ps_draw_p2_nomask
@@ -1311,27 +869,8 @@ __ps_next_col:
         dec  b
         jp   nz, __ps_col_loop
         ret
-__ps_get_vram:
-        ld   h, 0
-        ld   l, a
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        ld   d, h
-        ld   e, l
-        add  hl, hl
-        add  hl, hl
-        add  hl, hl
-        add  hl, de
-        ld   d, 0
-        ld   e, c
-        add  hl, de
-        ld   de, __vram
-        add  hl, de
-        ret	
-	
-	
+
+
 ; =====================================================================
 ; g850_repaintlcd
 ; =====================================================================
@@ -1345,8 +884,6 @@ __rpl_page_loop:
         out  (40h), a
         ld   a, 10h
         out  (40h), a
-        push hl
-        pop  hl
         ld   b, 144
         ld   d, c
         ld   c, 41h
@@ -1407,32 +944,15 @@ g850_updatelcd:
         call __upd_clip_y
         ld   (__upd_y2), a
         pop  ix
-        ld   a, (__upd_x1)
-        ld   b, a
-        ld   a, (__upd_x2)
-        cp   b
-        jr   nc, __upd_x_ok
-        ld   (__upd_x1), a
-        ld   a, b
-        ld   (__upd_x2), a
-__upd_x_ok:
+        call __sort_coords
         ld   a, (__upd_y1)
-        ld   b, a
-        ld   a, (__upd_y2)
-        cp   b
-        jr   nc, __upd_y_ok
-        ld   (__upd_y1), a
-        ld   a, b
-        ld   (__upd_y2), a
-__upd_y_ok:
-        ld   a, (__upd_y1)
-        srl  a
-        srl  a
+        srl  a 
+        srl  a 
         srl  a
         ld   (__upd_p1), a
         ld   a, (__upd_y2)
-        srl  a
-        srl  a
+        srl  a 
+        srl  a 
         srl  a
         ld   (__upd_p2), a
         ld   a, (__upd_p1)
@@ -1441,26 +961,20 @@ __upd_page_loop:
         ld   a, (__upd_cur_p)
         or   0B0h
         out  (40h), a
-        push hl
-        pop  hl
         ld   a, (__upd_x1)
         and  0Fh
         out  (40h), a
-        push hl
-        pop  hl
         ld   a, (__upd_x1)
-        srl  a
-        srl  a
-        srl  a
+        srl  a 
+        srl  a 
+        srl  a 
         srl  a
         or   10h
         out  (40h), a
-        push hl
-        pop  hl
         ld   a, (__upd_x1)
         ld   c, a
         ld   a, (__upd_cur_p)
-        call __upd_get_vram
+        call __calc_vram_addr
         ld   a, (__upd_x1)
         ld   b, a
         ld   a, (__upd_x2)
@@ -1470,24 +984,16 @@ __upd_page_loop:
         ld   c, 41h
 __upd_lcd_loop:
         outi
-        push hl
-        pop  hl
         jr   nz, __upd_lcd_loop
         ld   a, (__upd_cur_p)
         ld   b, a
         ld   a, (__upd_p2)
         cp   b
-        jr   z, __upd_exit
+        jp   z, __exit_1arg
         inc  b
         ld   a, b
         ld   (__upd_cur_p), a
         jr   __upd_page_loop
-
-__upd_exit:
-        pop  hl   
-        pop  bc   
-        jp   (hl) 
-
 __upd_clip_x:
         cp   192
         jr   c, __clip_x_pos
@@ -1498,7 +1004,6 @@ __clip_x_pos:
         ret  c
         ld   a, 143
         ret
-
 __upd_clip_y:
         cp   192
         jr   c, __clip_y_pos
@@ -1510,7 +1015,77 @@ __clip_y_pos:
         ld   a, 47
         ret
 
-__upd_get_vram:
+
+; =====================================================================
+; g850_get_vram_addr / g850_get_bg_addr / g850_get_pattern_addr
+;   Output: HL = Address
+; =====================================================================
+g850_get_vram_addr:
+        ld   hl, __vram
+        ret
+
+
+g850_get_bg_addr:
+        ld   hl, (__bg_vram_addr)
+        ret
+
+
+g850_get_pattern_addr:
+        ld   hl, __current_pattern
+        ret
+
+
+; =====================================================================
+; g850_SetBGAddr
+;   Input: HL = Address
+; =====================================================================
+g850_setbgaddr:
+        ld   (__bg_vram_addr), hl
+        ret	
+	
+
+; =====================================================================
+; Misc Routine
+; =====================================================================
+__load_rect_args:
+        push ix
+        ld   ix, 4
+        add  ix, sp
+        ld   a, (ix+4)
+        ld   (__gr_scratchpad+0), a
+        ld   a, (ix+2)
+        ld   (__gr_scratchpad+1), a
+        ld   a, l
+        ld   (__gr_scratchpad+2), a
+        ld   a, e
+        ld   (__gr_scratchpad+3), a
+        ld   a, c
+        ld   (__gr_scratchpad+4), a
+        pop  ix
+        ret
+__sort_coords:
+        ld   a, (__gr_scratchpad+0)
+        ld   hl, __gr_scratchpad+2
+        cp   (hl)
+        jr   c, __sc_skip_x
+        jr   z, __sc_skip_x
+        ld   b, (hl)
+        ld   (hl), a
+        ld   a, b
+        ld   (__gr_scratchpad+0), a
+__sc_skip_x:
+        ld   a, (__gr_scratchpad+1)
+        ld   hl, __gr_scratchpad+3
+        cp   (hl)
+        jr   c, __sc_skip_y
+        jr   z, __sc_skip_y
+        ld   b, (hl)
+        ld   (hl), a
+        ld   a, b
+        ld   (__gr_scratchpad+1), a
+__sc_skip_y:
+        ret
+__calc_vram_addr:
         ld   h, 0
         ld   l, a
         add  hl, hl
@@ -1529,36 +1104,112 @@ __upd_get_vram:
         ld   de, __vram
         add  hl, de
         ret
-
-
-; =====================================================================
-; g850_get_vram_addr / g850_get_bg_addr / g850_get_pattern_addr
-;   Output: HL = Address
-; =====================================================================
-g850_get_vram_addr:
-        ld   hl, __vram
+__exit_2args:
+        pop  hl
+        pop  bc
+        pop  bc
+        jp   (hl)
+__exit_1arg:
+        pop  hl
+        pop  bc
+        jp   (hl)
+__setup_fill_masks:
+        ld   a, (__gr_scratchpad+0)
+        ld   (__gr_scratchpad+5), a
+        ld   a, (__gr_scratchpad+1)
+        srl  a 
+        srl  a 
+        srl  a
+        ld   (__gr_scratchpad+7), a
+        ld   a, (__gr_scratchpad+3)
+        srl  a 
+        srl  a 
+        srl  a
+        ld   (__gr_scratchpad+8), a
+        ld   a, (__gr_scratchpad+1)
+        and  7
+        ld   e, a
+        ld   d, 0
+        ld   hl, __fp_top_mask_tbl
+        add  hl, de
+        ld   a, (hl)
+        ld   (__gr_scratchpad+9), a
+        ld   a, (__gr_scratchpad+3)
+        and  7
+        ld   e, a
+        ld   d, 0
+        ld   hl, __fp_bot_mask_tbl
+        add  hl, de
+        ld   a, (hl)
+        ld   (__gr_scratchpad+10), a
         ret
-
-g850_get_bg_addr:
-        ld   hl, (__bg_vram_addr)
+__fill_column:
+        ld   a, (__gr_scratchpad+7) 
+        ld   hl, __gr_scratchpad+8  
+        cp   (hl)
+        jr   nz, __fc_multi_page
+__fc_single_page:
+        ld   a, (__gr_scratchpad+9) 
+        ld   hl, __gr_scratchpad+10 
+        and  (hl)
+        ld   b, a
+        ld   a, (__gr_scratchpad+5) 
+        ld   c, a
+        ld   a, (__gr_scratchpad+7) 
+        call __calc_vram_addr
+        ld   a, b
+        cpl
+        and  (hl)
+        ld   e, a
+        ld   a, (__gr_scratchpad+6) 
+        and  b
+        or   e
+        ld   (hl), a
         ret
-
-g850_get_pattern_addr:
-        ld   hl, __current_pattern
+__fc_multi_page:
+        ld   a, (__gr_scratchpad+5)
+        ld   c, a
+        ld   a, (__gr_scratchpad+7)
+        call __calc_vram_addr
+        ld   a, (__gr_scratchpad+9)
+        ld   d, a
+        cpl
+        and  (hl)
+        ld   e, a
+        ld   a, (__gr_scratchpad+6)
+        and  d
+        or   e
+        ld   (hl), a
+        ld   a, (__gr_scratchpad+7)
+        inc  a
+        ld   b, a
+        ld   a, (__gr_scratchpad+8)
+        cp   b
+        jr   z, __fc_bottom_page
+__fc_mid_loop:
+        ld   de, 144
+        add  hl, de
+        ld   a, (__gr_scratchpad+6)
+        ld   (hl), a
+        inc  b
+        ld   a, (__gr_scratchpad+8)
+        cp   b
+        jr   nz, __fc_mid_loop
+__fc_bottom_page:
+        ld   a, (__gr_scratchpad+5)
+        ld   c, a
+        ld   a, (__gr_scratchpad+8)
+        call __calc_vram_addr
+        ld   a, (__gr_scratchpad+10)
+        ld   d, a
+        cpl
+        and  (hl)
+        ld   e, a
+        ld   a, (__gr_scratchpad+6)
+        and  d
+        or   e
+        ld   (hl), a
         ret
-	
-	
-; =====================================================================
-; g850_SetBGAddr
-;   Input: HL = Address
-; =====================================================================
-g850_setbgaddr:
-        ld   (__bg_vram_addr), hl
-        ret	
-
-; =====================================================================
-; Misc Routine
-; =====================================================================
 __prep_vram_and_mask:
         ld   a,l
         ld   (__x_raw),a
@@ -1597,8 +1248,8 @@ __prep_vram_and_mask:
         ld   de,__vram
         add  hl,de    
         ret
-
-
+	
+	
 ; =====================================================================
 ; Shared Scratchpad
 ; =====================================================================
@@ -1631,28 +1282,14 @@ __dr_step_y  equ __gr_scratchpad + 8
 __dr_err     equ __gr_scratchpad + 9
 
 ; --- g850_fillbox & g850_fillpattern ---
-__fp_x1      equ __gr_scratchpad + 0
-__fb_x1      equ __gr_scratchpad + 0
-__fp_y1      equ __gr_scratchpad + 1
-__fb_y1      equ __gr_scratchpad + 1
-__fp_x2      equ __gr_scratchpad + 2
-__fb_x2      equ __gr_scratchpad + 2
-__fp_y2      equ __gr_scratchpad + 3
-__fb_y2      equ __gr_scratchpad + 3
-__fp_color   equ __gr_scratchpad + 4
 __fb_color   equ __gr_scratchpad + 4
-__fp_cur_x   equ __gr_scratchpad + 5
 __fb_cur_x   equ __gr_scratchpad + 5
-__fp_col_byte equ __gr_scratchpad + 6
 __fb_col_byte equ __gr_scratchpad + 6
-__fp_start_page equ __gr_scratchpad + 7
-__fb_start_page equ __gr_scratchpad + 7
-__fp_end_page equ __gr_scratchpad + 8
-__fb_end_page equ __gr_scratchpad + 8
-__fp_top_mask equ __gr_scratchpad + 9
-__fb_top_mask equ __gr_scratchpad + 9
-__fp_bot_mask equ __gr_scratchpad + 10
-__fb_bot_mask equ __gr_scratchpad + 10
+__fb_x2      equ __gr_scratchpad + 2
+__fp_color   equ __gr_scratchpad + 4
+__fp_cur_x   equ __gr_scratchpad + 5
+__fp_col_byte equ __gr_scratchpad + 6
+__fp_x2      equ __gr_scratchpad + 2
 
 ; --- g850_fillshape ---
 __fs_start_x equ __gr_scratchpad + 0
