@@ -354,7 +354,7 @@ __fp_x_loop:
         and  7
         ld   e, a
         ld   d, 0
-        ld   hl, __current_pattern
+        ld   hl, (__current_pattern_ptr)
         add  hl, de
         ld   b, (hl)
         ld   a, (__fp_color)
@@ -627,7 +627,7 @@ g850_getmask:
 ;   Input:  HL = Address of TPattern (var P)
 ; =====================================================================
 g850_pattern:
-        ld   de, __current_pattern
+        ld   de, (__current_pattern_ptr)
         jr   __copy_8_bytes
 
 
@@ -636,7 +636,7 @@ g850_pattern:
 ;   Input:  HL = Address of TPattern (var P)
 ; =====================================================================
 g850_mask:
-        ld   de, __mask_pattern
+        ld   de, (__mask_pattern_ptr)
 __copy_8_bytes:
         ld   bc, 8                
         ldir                      
@@ -653,7 +653,7 @@ g850_getsprite:
         ld   (__gs_x), a
         ld   a, e
         ld   (__gs_y), a
-        ld   hl, __current_pattern
+        ld   hl, (__current_pattern_ptr)
         ld   (__gs_pat_ptr), hl   
         ld   b, 8                 
 __gs_col_loop:
@@ -766,8 +766,10 @@ g850_putsprite:
         ld   a, c               
         ld   (__ps_use_mask), a
         ld   b, 8      
-        ld   hl, __current_pattern
+        ld   hl, (__current_pattern_ptr)
         ld   (__ps_pat_ptr), hl
+        ld   hl, (__mask_pattern_ptr)
+        ld   (__ps_mask_ptr), hl
 __ps_col_loop:
         push bc              
         ld   a, (__ps_x)
@@ -782,12 +784,9 @@ __ps_col_loop:
         srl  a
         srl  a
         ld   (__ps_page), a
-        ld   hl, (__ps_pat_ptr)
-        push hl
-        ld   de, 8
-        add  hl, de
+        ld   hl, (__ps_mask_ptr)
         ld   a, (hl)
-        pop  hl
+        ld   hl, (__ps_pat_ptr)
         ld   e, (hl)
         cpl                     
         ld   l, a
@@ -862,6 +861,9 @@ __ps_next_col:
         ld   hl, (__ps_pat_ptr)
         inc  hl
         ld   (__ps_pat_ptr), hl
+        ld   hl, (__ps_mask_ptr)
+        inc  hl
+        ld   (__ps_mask_ptr), hl
         ld   a, (__ps_x)
         inc  a
         ld   (__ps_x), a
@@ -1017,7 +1019,7 @@ __clip_y_pos:
 
 
 ; =====================================================================
-; g850_get_vram_addr / g850_get_bg_addr / g850_get_pattern_addr
+; g850_get_vram_addr
 ;   Output: HL = Address
 ; =====================================================================
 g850_get_vram_addr:
@@ -1025,24 +1027,58 @@ g850_get_vram_addr:
         ret
 
 
+; =====================================================================
+; g850_get_bg_addr
+;   Output: HL = Address
+; =====================================================================
 g850_get_bg_addr:
         ld   hl, (__bg_vram_addr)
         ret
 
 
+; =====================================================================
+; g850_get_pattern_addr
+;   Output: HL = Address
+; =====================================================================
 g850_get_pattern_addr:
-        ld   hl, __current_pattern
+        ld   hl, (__current_pattern_ptr)
         ret
 
 
 ; =====================================================================
-; g850_SetBGAddr
+; g850_get_mask_addr
+;   Output: HL = Address
+; =====================================================================
+g850_get_mask_addr:
+        ld   hl, (__mask_pattern_ptr)
+        ret
+
+
+; =====================================================================
+; g850_setbgaddr
 ;   Input: HL = Address
 ; =====================================================================
 g850_setbgaddr:
         ld   (__bg_vram_addr), hl
         ret	
-	
+
+
+; =====================================================================
+; g850_set_pattern_addr
+;   Input: HL = Address
+; =====================================================================
+g850_set_pattern_addr:
+        ld   (__current_pattern_ptr), hl
+        ret
+
+
+; =====================================================================
+; g850_set_mask_addr
+;   Input: HL = Address
+; =====================================================================
+g850_set_mask_addr:
+        ld   (__mask_pattern_ptr), hl
+        ret	
 
 ; =====================================================================
 ; Misc Routine
@@ -1315,6 +1351,7 @@ __ps_data_h  equ __gr_scratchpad + 4
 __ps_pat_ptr equ __gr_scratchpad + 5
 __ps_mask_l  equ __gr_scratchpad + 7
 __ps_mask_h  equ __gr_scratchpad + 8
+__ps_mask_ptr equ __gr_scratchpad + 9
 
 ; --- g850_updatelcd ---
 __upd_x1     equ __gr_scratchpad + 0
@@ -1335,8 +1372,10 @@ __px_color:     .db 0
 __px_mask:      .db 0           
 __ps_use_mask:  .ds 1
 __mask_table:   .db  001h, 002h, 004h, 008h, 010h, 020h, 040h, 080h
-__current_pattern: .db 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh
-__mask_pattern: .db 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh
+__current_pattern_ptr: .dw __current_pattern
+__mask_pattern_ptr:    .dw __mask_pattern
+__current_pattern:     .db 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh
+__mask_pattern:     .db 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh, 0FFh
 __fp_top_mask_tbl: .db 0FFh, 0FEh, 0FCh, 0F8h, 0F0h, 0E0h, 0C0h, 080h
 __fp_bot_mask_tbl: .db 001h, 003h, 007h, 00Fh, 01Fh, 03Fh, 07Fh, 0FFh
 __fs_stack:     .ds 128

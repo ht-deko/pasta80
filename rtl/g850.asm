@@ -295,9 +295,15 @@ __internal_key_scan:
                 ld      hl, __KeyBuffer
                 ld      d, 01h
                 ld      b, 8
+
 __scan11:
                 ld      a, d
                 out     (11h), a
+
+                ld      c, 20h
+__wait11:
+                dec     c
+                jr      nz, __wait11
                 in      a, (10h)
                 ld      (hl), a
                 inc     hl
@@ -310,6 +316,10 @@ __scan11:
 __scan12:
                 ld      a, d
                 out     (12h), a
+                ld      c, 20h
+__wait12:
+                dec     c
+                jr      nz, __wait12
                 in      a, (10h)
                 ld      (hl), a
                 inc     hl
@@ -327,7 +337,7 @@ g850_scankeyboard:
                 ld      bc, 10
                 ldir
                 ret
-
+		
 g850_keypressed:
                 call    __internal_key_scan
                 ld      hl, __KeyBuffer
@@ -378,3 +388,4 @@ __delay_inner:
 __cur_x:        .db 0
 __cur_y:        .db 0
 __KeyBuffer:    .ds 10
+

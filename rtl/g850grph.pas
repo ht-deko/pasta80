@@ -44,6 +44,8 @@ procedure RepaintLCD; external 'g850_repaintlcd';
 procedure RestoreBG; external 'g850_restorebg';
 procedure SaveBG; external 'g850_savebg';
 procedure SetBGAddr(adr: Integer); register; external 'g850_setbgaddr';
+procedure SetPatternAddr(adr: Integer); register; external 'g850_set_pattern_addr';
+procedure SetMaskAddr(adr: Integer); register; external 'g850_set_mask_addr';
 procedure UpdateLCD(X1, Y1, X2, Y2: Byte); register; external 'g850_updatelcd';
 
 // ---------------------------------------------------------------------
